@@ -1,0 +1,26 @@
+FROM python:3.12-slim
+
+# see outputs when docker is running 
+ENV PYTHONUNBUFFERED=1
+
+# RUN mkdir /django
+
+WORKDIR /django
+
+# Prevents Python from writing pyc files to disk
+ENV PYTHONDONTWRITEBYTECODE=1
+
+COPY requirements.txt /django/
+
+RUN pip3 install -r requirements.txt
+
+# COPY . /django/
+
+COPY . .
+
+# Expose the Django port
+EXPOSE 8000
+
+# Run Django’s development server
+CMD ["python3", "manage.py", "runserver", "0.0.0.0:8000"]
+

@@ -1,0 +1,11 @@
+# version: '3.12'
+
+services:
+  django:
+    platform: linux/amd64
+    image: photographyproject
+    build:
+      context: .
+      dockerfile: DockerFile
+    ports:
+      - "8000:8000"

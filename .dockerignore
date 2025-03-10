@@ -1,0 +1,18 @@
+# Ignore specific folders
+zippedImages
+.venv
+.venv/.venv
+
+# Ignore specific files
+.env
+*.log
+
+# Ignore all __pycache__ directories
+__pycache__
+auth_app/__pycache__
+
+# Ignore all .git directories
+.git
+
+# Ignore all .DS_Store files (macOS)
+.DS_Store

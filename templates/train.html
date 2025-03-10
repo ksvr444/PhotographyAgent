@@ -1,0 +1,219 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Train and Generate</title>
+    <style>
+         /* User email styling */
+         .user-email {
+            position: fixed;
+            top: 10px;
+            left: 10px;
+            font-size: 16px;
+            font-weight: bold;
+            color: #333;
+        }
+        /* Banner message styling */
+        .messages {
+            position: fixed;
+            top: 20px;
+            left: 20px;
+            z-index: 1000;
+        }
+        .message {
+            padding: 10px 20px;
+            margin-bottom: 10px;
+            border-radius: 5px;
+            color: white;
+            font-size: 14px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+        .message.error {
+            background-color: #ff4444; /* Red for errors */
+        }
+        .message.success {
+            background-color: #00C851; /* Green for success */
+        }
+
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f4f4f9;
+            margin: 0;
+            padding: 0;
+        }
+        .container {
+            display: flex;
+            max-width: 1200px;
+            margin: 50px auto;
+            background-color: #fff;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+            border-radius: 8px;
+            overflow: hidden;
+        }
+        .left-section, .right-section {
+            flex: 1;
+            padding: 40px;
+        }
+        .left-section {
+            border-right: 1px solid #ccc;
+            background-color: #f9f9f9;
+        }
+        h2 {
+            color: #333;
+        }
+        label {
+            font-weight: bold;
+            color: #555;
+        }
+        input[type="text"], input[type="file"], select {
+            width: 100%;
+            padding: 10px;
+            margin: 10px 0 20px 0;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+        }
+        button {
+            background-color: #007bff;
+            color: #fff;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+        }
+        button:hover {
+            background-color: #0056b3;
+        }
+        .generated-image {
+            margin-top: 20px;
+            max-width: 100%;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+        }
+        #generated-image-container {
+            text-align: center;
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Display user email -->
+    <div class="user-email">
+        Welcome, {{ user_email }}!
+    </div>
+
+    <!-- Logout Button -->
+    <div style="text-align: right; padding: 20px;">
+        <form method="post" action="{% url 'logout' %}">
+            {% csrf_token %}
+            <button type="submit" style="background-color: #dc3545; color: #fff; padding: 10px 20px; border: none; border-radius: 4px; cursor: pointer; font-size: 16px;">Logout</button>
+        </form>
+    </div>
+
+
+    <!-- Display messages -->
+    <div class="messages">
+        {% for message in messages %}
+            <div class="message {% if message.tags %}{{ message.tags }}{% endif %}">
+                {{ message }}
+            </div>
+        {% endfor %}
+    </div>
+
+    <div class="container">
+        <!-- Left Section -->
+        <div class="left-section">
+            <h2>Train Model</h2>
+            <form method="post" enctype="multipart/form-data">
+                {% csrf_token %}
+                <label for="model_name">Model Name:</label><br>
+                <input type="text" id="model_name" name="model_name" required><br><br>
+
+                <label for="training_images">Upload 5 Images of Person 1:</label><br>
+                <input type="file" id="training_images_p1" name="training_images_p1" multiple required><br><br>
+
+                <label for="training_images">Upload 5 Images of Person 2:</label><br>
+                <input type="file" id="training_images_p2" name="training_images_p2" multiple required><br><br>
+
+                <label for="training_images">Upload 5 Images of combined:</label><br>
+                <input type="file" id="training_images_co" name="training_images_co" multiple required><br><br>
+
+                <button type="submit">Train</button>
+            </form>
+        </div>
+
+        <!-- Right Section -->
+        <div class="right-section">
+            <h2>Generate Image</h2>
+            <form id="generate-form">
+                {% csrf_token %}
+                <label for="model_select">Select Model:</label><br>
+                <select id="model_select" name="model_select" required>
+                    {% for model in user_models %}
+                        <option value="{{ model.modelId }}">{{ model.modelName }}</option>
+                    {% endfor %}
+                </select><br><br>
+
+                <label for="prompt">Prompt: (Use code names for persons as aabbcc and ccbbaa)</label><br>
+                <input type="text" id="prompt" name="prompt" required><br><br>
+
+                <button type="button" id="generate-button">Generate</button>
+            </form>
+
+            <!-- Display Generated Image -->
+            <div id="generated-image-container">
+                <img id="generated-image" class="generated-image" src="" alt="Generated Image" style="display: none;">
+            </div>
+        </div>
+    </div>
+
+    <script>
+
+        // Function to hide messages after a delay
+        function hideMessages() {
+            const messages = document.querySelectorAll('.message');
+            messages.forEach(message => {
+                setTimeout(() => {
+                    message.style.opacity = '0';  // Fade out the message
+                    setTimeout(() => {
+                        message.remove();  // Remove the message from the DOM
+                    }, 500);  // Wait for the fade-out transition to complete
+                }, 3000);  // Hide after 3 seconds
+            });
+        }
+
+        // Call the function when the page loads
+        document.addEventListener('DOMContentLoaded', hideMessages);
+
+
+       // Handle Generate Button Click
+    document.getElementById("generate-button").addEventListener("click", function () {
+        const modelId = document.getElementById("model_select").value;
+        const prompt = document.getElementById("prompt").value;
+
+        // Send AJAX request to generate image
+        fetch("/generate/", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+                "X-CSRFToken": "{{ csrf_token }}",
+            },
+            body: JSON.stringify({ modelId, prompt }),
+        })
+            .then((response) => response.json())
+            .then((data) => {
+                if (data.image_url) {
+                    // Display the generated image
+                    const imageElement = document.getElementById("generated-image");
+                    imageElement.src = data.image_url;  // Set the base64 image as the src
+                    imageElement.style.display = "block";
+                } else {
+                    alert("Error generating image: " + data.error);
+                }
+            })
+            .catch((error) => {
+                console.error("Error:", error);
+            });
+    });
+    </script>
+</body>
+</html>
